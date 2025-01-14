@@ -349,6 +349,7 @@ export default function CarIssueAssistant() {
     setInput("");
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const moveToNextIssueOrFinish = () => {
     if (currentIssueIndex < repairInfo.repairIssues.length - 1) {
       setCurrentIssueIndex((prev) => prev + 1);
