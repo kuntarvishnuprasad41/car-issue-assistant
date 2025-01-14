@@ -1,0 +1,27 @@
+{
+  "cars": [
+    "Toyota Camry",
+    "Honda Civic",
+    "Ford F-150",
+    "Chevrolet Malibu",
+    "Nissan Altima",
+    "BMW 3 Series",
+    "Mercedes-Benz C-Class",
+    "Audi A4",
+    "Hyundai Sonata",
+    "Kia Optima"
+  ],
+  "issues": [
+    "Engine",
+    "Transmission",
+    "Brakes",
+    "Electrical",
+    "Suspension",
+    "Air Conditioning",
+    "Steering",
+    "Fuel System",
+    "Exhaust System",
+    "Cooling System"
+  ]
+}
+
