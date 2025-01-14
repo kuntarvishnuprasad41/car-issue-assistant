@@ -2,22 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import carData from "../app/data/carData.json";
-
-type Message = {
-  text: string;
-  sender: "user" | "bot";
-  options?: string[];
-  isMultiSelect?: boolean;
-  inputType?: "text" | "tel" | "number";
-  inputPlaceholder?: string;
-};
-
-type RepairInfo = {
-  customerName: string;
-  customerMobile: string;
-  issuePriorities: { [key: string]: number };
-  estimatedCompletionTime: string;
-};
+import {
+  RepairInfo,
+  RepairIssue,
+  RepairStatus,
+  Message,
+} from "../types/repairTypes";
 
 export default function CarIssueAssistant() {
   const [messages, setMessages] = useState<Message[]>([
@@ -31,6 +21,7 @@ export default function CarIssueAssistant() {
     customerMobile: "",
     issuePriorities: {},
     estimatedCompletionTime: "",
+    repairIssues: [],
   });
   const [currentStep, setCurrentStep] = useState<
     | "car"
@@ -39,8 +30,15 @@ export default function CarIssueAssistant() {
     | "customerMobile"
     | "priorities"
     | "estimatedTime"
+    | "repairStatus"
+    | "spareParts"
+    | "newIssues"
     | "complete"
+    | "selectIssue"
+    | "continueRepair"
   >("car");
+  const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
+  const [currentIssue, setCurrentIssue] = useState<RepairIssue | null>(null);
 
   const findSimilarModels = (input: string): string[] => {
     const inputLower = input.toLowerCase();
@@ -73,6 +71,25 @@ export default function CarIssueAssistant() {
         break;
       case "estimatedTime":
         handleEstimatedTimeSubmit();
+        break;
+      case "repairStatus":
+        handleRepairStatusSubmit();
+        break;
+      case "spareParts":
+        handleSparePartsSubmit();
+        break;
+      case "newIssues":
+        handleNewIssuesSubmit();
+        break;
+      case "selectIssue":
+        handleSelectIssue();
+        break;
+      case "continueRepair":
+        if (input.toLowerCase() === "yes") {
+          selectNextIssue();
+        } else {
+          finishRepairProcess();
+        }
         break;
     }
   };
@@ -188,7 +205,14 @@ export default function CarIssueAssistant() {
       return acc;
     }, {} as { [key: string]: number });
 
-    setRepairInfo((prev) => ({ ...prev, issuePriorities: priorities }));
+    setRepairInfo((prev) => ({
+      ...prev,
+      issuePriorities: priorities,
+      repairIssues: selectedIssues.map((issue) => ({
+        issue,
+        status: "not started",
+      })),
+    }));
     setMessages((prev) => [
       ...prev,
       { text: input, sender: "user" },
@@ -205,17 +229,215 @@ export default function CarIssueAssistant() {
 
   const handleEstimatedTimeSubmit = () => {
     setRepairInfo((prev) => ({ ...prev, estimatedCompletionTime: input }));
+    setMessages((prev) => [
+      ...prev,
+      { text: input, sender: "user" },
+      {
+        text: `Estimated completion time set. Let's start with the first repair issue. What's the status of "${repairInfo.repairIssues[0].issue}"?`,
+        sender: "bot",
+        options: [
+          "not started",
+          "in progress",
+          "on hold",
+          "completed",
+          "pending parts",
+        ],
+      },
+    ]);
+    setCurrentStep("repairStatus");
+    setInput("");
+  };
+
+  const handleRepairStatusSubmit = () => {
+    if (!currentIssue) return;
+
+    const updatedRepairIssues = repairInfo.repairIssues.map((issue) =>
+      issue.issue === currentIssue.issue
+        ? { ...issue, status: input as RepairStatus }
+        : issue
+    );
+
+    setRepairInfo((prev) => ({ ...prev, repairIssues: updatedRepairIssues }));
+
+    if (input === "pending parts") {
+      setMessages((prev) => [
+        ...prev,
+        { text: input, sender: "user" },
+        {
+          text: `What spare parts are needed for "${currentIssue.issue}"? (Enter comma-separated list)`,
+          sender: "bot",
+          inputType: "text",
+          inputPlaceholder: "Enter needed spare parts",
+        },
+      ]);
+      setCurrentStep("spareParts");
+    } else {
+      selectNextIssue();
+    }
+    setInput("");
+  };
+
+  const handleSparePartsSubmit = () => {
+    if (!currentIssue) return;
+
+    const updatedRepairIssues = repairInfo.repairIssues.map((issue) =>
+      issue.issue === currentIssue.issue
+        ? { ...issue, spareParts: input.split(",").map((part) => part.trim()) }
+        : issue
+    );
+
+    setRepairInfo((prev) => ({ ...prev, repairIssues: updatedRepairIssues }));
+    selectNextIssue();
+    setInput("");
+  };
+
+  const selectNextIssue = () => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        text: `Which issue would you like to work on next?`,
+        sender: "bot",
+        options: repairInfo.repairIssues.map((issue) => issue.issue),
+      },
+    ]);
+    setCurrentStep("selectIssue");
+  };
+
+  const handleSelectIssue = () => {
+    const selectedIssue = repairInfo.repairIssues.find(
+      (issue) => issue.issue === input
+    );
+    if (selectedIssue) {
+      setCurrentIssue(selectedIssue);
+      const highestPriority = Math.min(
+        ...Object.values(repairInfo.issuePriorities)
+      );
+      const isHighestPriority =
+        repairInfo.issuePriorities[selectedIssue.issue] === highestPriority;
+
+      let message = `You've selected to work on "${selectedIssue.issue}". `;
+      if (!isHighestPriority) {
+        message += `Warning: This is not the highest priority issue. `;
+      }
+      message += `What's the current status of this issue?`;
+
+      setMessages((prev) => [
+        ...prev,
+        { text: input, sender: "user" },
+        {
+          text: message,
+          sender: "bot",
+          options: [
+            "not started",
+            "in progress",
+            "on hold",
+            "completed",
+            "pending parts",
+          ],
+        },
+      ]);
+      setCurrentStep("repairStatus");
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { text: input, sender: "user" },
+        { text: "Invalid issue selected. Please try again.", sender: "bot" },
+      ]);
+    }
+    setInput("");
+  };
+
+  const moveToNextIssueOrFinish = () => {
+    if (currentIssueIndex < repairInfo.repairIssues.length - 1) {
+      setCurrentIssueIndex((prev) => prev + 1);
+      const nextIssue = repairInfo.repairIssues[currentIssueIndex + 1];
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: `Moving to the next issue. What's the status of "${nextIssue.issue}"?`,
+          sender: "bot",
+          options: [
+            "not started",
+            "in progress",
+            "on hold",
+            "completed",
+            "pending parts",
+          ],
+        },
+      ]);
+      setCurrentStep("repairStatus");
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: `All reported issues have been updated. Are there any new issues discovered during the repair? (Yes/No)`,
+          sender: "bot",
+          options: ["Yes", "No"],
+        },
+      ]);
+      setCurrentStep("newIssues");
+    }
+  };
+
+  const handleNewIssuesSubmit = () => {
+    if (input.toLowerCase() === "yes") {
+      setMessages((prev) => [
+        ...prev,
+        { text: input, sender: "user" },
+        {
+          text: `What new issue have you discovered? (Enter one at a time)`,
+          sender: "bot",
+          inputType: "text",
+          inputPlaceholder: "Enter new issue",
+        },
+      ]);
+      setInput("");
+    } else {
+      finishRepairProcess();
+    }
+  };
+
+  const finishRepairProcess = () => {
+    const allIssuesCompleted = repairInfo.repairIssues.every(
+      (issue) => issue.status === "completed"
+    );
+
+    if (!allIssuesCompleted) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: "Not all issues are completed. Do you want to continue working on the remaining issues? (Yes/No)",
+          sender: "bot",
+          options: ["Yes", "No"],
+        },
+      ]);
+      setCurrentStep("continueRepair");
+      return;
+    }
+
     const summary = `
       Repair order summary:
 
       Car Model: ${currentCar}
-      Issues to address: ${selectedIssues.join(", ")}
       Customer Name: ${repairInfo.customerName}
       Customer Contact: ${repairInfo.customerMobile}
-      Repair Priorities: ${Object.entries(repairInfo.issuePriorities)
-        .map(([issue, priority]) => `${issue} (${priority})`)
-        .join(", ")}
-      Estimated Completion Time: ${input}
+      Estimated Completion Time: ${repairInfo.estimatedCompletionTime}
+
+      Repair Issues:
+      ${repairInfo.repairIssues
+        .map(
+          (issue, index) =>
+            `${index + 1}. ${issue.issue} (Priority: ${
+              repairInfo.issuePriorities[issue.issue]
+            })
+         Status: ${issue.status}
+         ${
+           issue.spareParts
+             ? `Spare Parts Needed: ${issue.spareParts.join(", ")}`
+             : ""
+         }`
+        )
+        .join("\n")}
 
       Repair order logged. Proceed with the repairs as prioritized.
     `;
@@ -255,7 +477,18 @@ export default function CarIssueAssistant() {
       newPriorities[index] =
         (currentPriorities[index] % selectedIssues.length) + 1;
       setInput(newPriorities.join(","));
+    } else if (
+      ["repairStatus", "newIssues", "selectIssue", "continueRepair"].includes(
+        currentStep
+      )
+    ) {
+      setInput(option);
+      handleSubmit(new Event("submit") as React.FormEvent);
     }
+  };
+
+  const handleCallCustomer = () => {
+    window.location.href = `tel:${repairInfo.customerMobile}`;
   };
 
   useEffect(() => {
@@ -363,6 +596,16 @@ export default function CarIssueAssistant() {
           </div>
         )}
       </form>
+      {repairInfo.customerMobile && (
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleCallCustomer}
+            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none"
+          >
+            Call Customer: {repairInfo.customerMobile}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
