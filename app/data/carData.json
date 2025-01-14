@@ -1,15 +1,25 @@
 {
   "cars": [
-    "Toyota Camry",
-    "Honda Civic",
-    "Ford F-150",
-    "Chevrolet Malibu",
-    "Nissan Altima",
+    "Maruti Suzuki Swift",
+    "Maruti Suzuki Baleno",
+    "Hyundai Creta",
+    "Hyundai i20",
+    "Tata Nexon",
+    "Tata Harrier",
+    "Mahindra Thar",
+    "Mahindra XUV700",
+    "Kia Seltos",
+    "Kia Sonet",
+    "Toyota Fortuner",
+    "Honda City",
+    "Volkswagen Virtus",
+    "Skoda Slavia",
+    "Renault Kwid",
+    "Nissan Magnite",
+    "MG Hector",
+    "Jeep Compass",
     "BMW 3 Series",
-    "Mercedes-Benz C-Class",
-    "Audi A4",
-    "Hyundai Sonata",
-    "Kia Optima"
+    "Mercedes-Benz GLC"
   ],
   "issues": [
     "Engine",
@@ -24,4 +34,3 @@
     "Cooling System"
   ]
 }
-

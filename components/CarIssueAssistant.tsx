@@ -502,7 +502,7 @@ export default function CarIssueAssistant() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-[#001d3d] rounded-lg shadow-lg overflow-hidden">
       <div id="chat-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
@@ -514,8 +514,8 @@ export default function CarIssueAssistant() {
             <div
               className={`max-w-xs p-3 rounded-lg ${
                 message.sender === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-100"
+                  ? "bg-[#023e7d] text-white"
+                  : "bg-[#002855] text-white"
               }`}
             >
               <p className="whitespace-pre-line">{message.text}</p>
@@ -525,10 +525,10 @@ export default function CarIssueAssistant() {
                     <button
                       key={optionIndex}
                       onClick={() => handleOptionClick(option)}
-                      className={`block w-full text-left p-2 rounded text-gray-800 border transition-colors ${
+                      className={`block w-full text-left p-2 rounded text-white border transition-colors ${
                         message.isMultiSelect && selectedIssues.includes(option)
-                          ? "bg-blue-100 border-blue-500"
-                          : "bg-white hover:bg-gray-50 border-gray-200"
+                          ? "bg-[#023e7d] border-[#003566]"
+                          : "bg-[#002855] hover:bg-[#003566] border-[#003566]"
                       }`}
                     >
                       <div className="flex items-center">
@@ -536,8 +536,8 @@ export default function CarIssueAssistant() {
                           <div
                             className={`w-4 h-4 border rounded mr-2 flex items-center justify-center ${
                               selectedIssues.includes(option)
-                                ? "bg-blue-500 border-blue-500"
-                                : "border-gray-300"
+                                ? "bg-[#023e7d] border-[#003566]"
+                                : "border-[#003566]"
                             }`}
                           >
                             {selectedIssues.includes(option) && (
@@ -555,7 +555,7 @@ export default function CarIssueAssistant() {
                             )}
                           </div>
                         ) : (
-                          <div className="w-4 h-4 border rounded mr-2 flex items-center justify-center">
+                          <div className="w-4 h-4 border rounded mr-2 flex items-center justify-center border-[#003566]">
                             {input.split(",")[optionIndex]}
                           </div>
                         )}
@@ -569,13 +569,13 @@ export default function CarIssueAssistant() {
           </div>
         ))}
       </div>
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-[#003566]">
+        <div className="flex rounded-lg border border-[#003566] overflow-hidden">
           <input
             type={messages[messages.length - 1].inputType || "text"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 px-4 py-2 focus:outline-none"
+            className="flex-1  px-4 py-2 focus:outline-none bg-[#002855] text-white placeholder-white]"
             placeholder={
               messages[messages.length - 1].inputPlaceholder ||
               "Enter information..."
@@ -583,10 +583,10 @@ export default function CarIssueAssistant() {
           />
           <button
             type="submit"
-            className={`px-6 py-2 text-white focus:outline-none ${
+            className={`px-6 py-2 text-white focus:outline-none text-white ${
               !input.trim() && selectedIssues.length === 0
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600"
+                ? "bg-black  cursor-not-allowed"
+                : "bg-[#023e7d] hover:bg-[#003566]"
             }`}
             disabled={!input.trim() && selectedIssues.length === 0}
           >
@@ -594,16 +594,16 @@ export default function CarIssueAssistant() {
           </button>
         </div>
         {currentStep === "issues" && selectedIssues.length > 0 && (
-          <div className="mt-2 text-sm text-gray-600">
+          <div className="mt-2 text-sm text-[#003566]">
             Selected issues: {selectedIssues.join(", ")}
           </div>
         )}
       </form>
       {repairInfo.customerMobile && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-[#003566]">
           <button
             onClick={handleCallCustomer}
-            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none"
+            className="w-full px-4 py-2 bg-[#023e7d] text-white rounded hover:bg-[#003566] focus:outline-none"
           >
             Call Customer: {repairInfo.customerMobile}
           </button>
