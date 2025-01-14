@@ -7,6 +7,7 @@ type Message = {
   text: string;
   sender: "user" | "bot";
   options?: string[];
+  isMultiSelect?: boolean;
 };
 
 export default function CarIssueAssistant() {
@@ -15,6 +16,7 @@ export default function CarIssueAssistant() {
   ]);
   const [input, setInput] = useState("");
   const [currentCar, setCurrentCar] = useState("");
+  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
 
   const findSimilarModels = (input: string): string[] => {
     const inputLower = input.toLowerCase();
@@ -27,7 +29,26 @@ export default function CarIssueAssistant() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && selectedIssues.length === 0) return;
+
+    if (currentCar && selectedIssues.length > 0) {
+      // Submit selected issues
+      const issuesText = selectedIssues.join(", ");
+      setMessages((prev) => [
+        ...prev,
+        { text: issuesText, sender: "user" },
+        {
+          text: `Thank you for reporting the following issues with the ${currentCar}:\n${selectedIssues.join(
+            "\n"
+          )}.\nThis will be added to your checklist and job sheet.`,
+          sender: "bot",
+        },
+      ]);
+      setCurrentCar("");
+      setSelectedIssues([]);
+      setInput("");
+      return;
+    }
 
     const newMessages = [...messages, { text: input, sender: "user" }];
     setMessages(newMessages);
@@ -43,9 +64,10 @@ export default function CarIssueAssistant() {
         setMessages([
           ...newMessages,
           {
-            text: `Great! What issue are you experiencing with your ${exactMatch}?`,
+            text: `Great! What issues are you experiencing with your ${exactMatch}? (Select all that apply)`,
             sender: "bot",
             options: carData.issues,
+            isMultiSelect: true,
           },
         ]);
       } else {
@@ -69,39 +91,29 @@ export default function CarIssueAssistant() {
           ]);
         }
       }
-    } else {
-      setMessages([
-        ...newMessages,
-        {
-          text: `Thank you for reporting the issue with your ${currentCar}. Our team will look into it.`,
-          sender: "bot",
-        },
-      ]);
-      setCurrentCar("");
     }
   };
 
   const handleOptionClick = (option: string) => {
-    setMessages([...messages, { text: option, sender: "user" }]);
     if (!currentCar) {
       setCurrentCar(option);
       setMessages((prev) => [
         ...prev,
+        { text: option, sender: "user" },
         {
-          text: `Great! What issue are you experiencing with your ${option}?`,
+          text: `Great! What issues are you experiencing with your ${option}? (Select all that apply)`,
           sender: "bot",
           options: carData.issues,
+          isMultiSelect: true,
         },
       ]);
     } else {
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: `Thank you for reporting the ${option} issue with your ${currentCar}. Our team will look into it.`,
-          sender: "bot",
-        },
-      ]);
-      setCurrentCar("");
+      // Toggle issue selection
+      setSelectedIssues((prev) =>
+        prev.includes(option)
+          ? prev.filter((issue) => issue !== option)
+          : [...prev, option]
+      );
     }
   };
 
@@ -113,7 +125,7 @@ export default function CarIssueAssistant() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-gray-100 rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
       <div id="chat-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
@@ -126,19 +138,48 @@ export default function CarIssueAssistant() {
               className={`max-w-xs p-3 rounded-lg ${
                 message.sender === "user"
                   ? "bg-blue-500 text-white"
-                  : "bg-white"
+                  : "bg-gray-100"
               }`}
             >
-              <p>{message.text}</p>
+              <p className="whitespace-pre-line">{message.text}</p>
               {message.options && (
                 <div className="mt-2 space-y-2">
                   {message.options.map((option, optionIndex) => (
                     <button
                       key={optionIndex}
                       onClick={() => handleOptionClick(option)}
-                      className="block w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded text-gray-800"
+                      className={`block w-full text-left p-2 rounded text-gray-800 border transition-colors ${
+                        message.isMultiSelect && selectedIssues.includes(option)
+                          ? "bg-blue-100 border-blue-500"
+                          : "bg-white hover:bg-gray-50 border-gray-200"
+                      }`}
                     >
-                      {option}
+                      <div className="flex items-center">
+                        {message.isMultiSelect && (
+                          <div
+                            className={`w-4 h-4 border rounded mr-2 flex items-center justify-center ${
+                              selectedIssues.includes(option)
+                                ? "bg-blue-500 border-blue-500"
+                                : "border-gray-300"
+                            }`}
+                          >
+                            {selectedIssues.includes(option) && (
+                              <svg
+                                className="w-3 h-3 text-white"
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            )}
+                          </div>
+                        )}
+                        {option}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -147,22 +188,37 @@ export default function CarIssueAssistant() {
           </div>
         ))}
       </div>
-      <form onSubmit={handleSubmit} className="p-4 bg-white">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
         <div className="flex rounded-lg border border-gray-300 overflow-hidden">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 px-4 py-2 focus:outline-none"
-            placeholder="Type your message..."
+            placeholder={
+              currentCar && selectedIssues.length > 0
+                ? "Press Send to submit issues"
+                : "Type your message..."
+            }
+            disabled={currentCar && selectedIssues.length > 0}
           />
           <button
             type="submit"
-            className="bg-blue-500 text-white px-4 py-2 hover:bg-blue-600 focus:outline-none"
+            className={`px-6 py-2 text-white focus:outline-none ${
+              !input.trim() && selectedIssues.length === 0
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600"
+            }`}
+            disabled={!input.trim() && selectedIssues.length === 0}
           >
-            Send
+            {currentCar && selectedIssues.length > 0 ? "Submit" : "Send"}
           </button>
         </div>
+        {currentCar && selectedIssues.length > 0 && (
+          <div className="mt-2 text-sm text-gray-600">
+            Selected issues: {selectedIssues.join(", ")}
+          </div>
+        )}
       </form>
     </div>
   );
