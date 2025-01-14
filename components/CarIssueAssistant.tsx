@@ -64,7 +64,7 @@ export default function CarIssueAssistant() {
         setMessages([
           ...newMessages,
           {
-            text: `Great! What issues are you experiencing with your ${exactMatch}? (Select all that apply)`,
+            text: `Great! What issues are customer experiencing with ${exactMatch}? (Select all that apply)`,
             sender: "bot",
             options: carData.issues,
             isMultiSelect: true,
@@ -101,7 +101,7 @@ export default function CarIssueAssistant() {
         ...prev,
         { text: option, sender: "user" },
         {
-          text: `Great! What issues are you experiencing with your ${option}? (Select all that apply)`,
+          text: `Great! What issues are customer experiencing with their ${option}? (Select all that apply)`,
           sender: "bot",
           options: carData.issues,
           isMultiSelect: true,
