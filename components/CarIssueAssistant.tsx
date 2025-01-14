@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import carData from "../data/carData.json";
+import carData from "../app/data/carData.json";
 
 type Message = {
   text: string;
