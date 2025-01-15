@@ -1,15 +1,35 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from "react";
 import carData from "../app/data/carData.json";
-import {
-  RepairInfo,
-  RepairIssue,
-  RepairStatus,
-  Message,
-} from "../types/repairTypes";
+
+interface Message {
+  text: string;
+  sender: "bot" | "user";
+  options?: string[];
+  isMultiSelect?: boolean;
+  inputType?: string;
+  inputPlaceholder?: string;
+}
+
+interface RepairIssue {
+  issue: string;
+  status:
+    | "not started"
+    | "in progress"
+    | "on hold"
+    | "completed"
+    | "pending parts";
+  spareParts?: string[];
+}
+
+interface RepairInfo {
+  customerName: string;
+  customerMobile: string;
+  issuePriorities: { [key: string]: number };
+  estimatedCompletionTime: string;
+  repairIssues: RepairIssue[];
+}
 
 export default function CarIssueAssistant() {
   const [messages, setMessages] = useState<Message[]>([
@@ -39,6 +59,7 @@ export default function CarIssueAssistant() {
     | "selectIssue"
     | "continueRepair"
   >("car");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
   const [currentIssue, setCurrentIssue] = useState<RepairIssue | null>(null);
 
@@ -97,7 +118,10 @@ export default function CarIssueAssistant() {
   };
 
   const handleCarSubmit = () => {
-    const newMessages = [...messages, { text: input, sender: "user" }];
+    const newMessages: Message[] = [
+      ...messages,
+      { text: input, sender: "user" },
+    ];
     setMessages(newMessages);
 
     const exactMatch = carData.cars.find(
@@ -231,11 +255,17 @@ export default function CarIssueAssistant() {
 
   const handleEstimatedTimeSubmit = () => {
     setRepairInfo((prev) => ({ ...prev, estimatedCompletionTime: input }));
+
+    // Set the current issue to the first issue
+    const firstIssue = repairInfo.repairIssues[0];
+    setCurrentIssue(firstIssue);
+    setCurrentIssueIndex(0);
+
     setMessages((prev) => [
       ...prev,
       { text: input, sender: "user" },
       {
-        text: `Estimated completion time set. Let's start with the first repair issue. What's the status of "${repairInfo.repairIssues[0].issue}"?`,
+        text: `Estimated completion time set. Let's start with the first repair issue. What's the status of "${firstIssue.issue}"?`,
         sender: "bot",
         options: [
           "not started",
@@ -251,11 +281,22 @@ export default function CarIssueAssistant() {
   };
 
   const handleRepairStatusSubmit = () => {
-    if (!currentIssue) return;
+    if (!currentIssue) {
+      console.error("No current issue selected");
+      return;
+    }
 
     const updatedRepairIssues = repairInfo.repairIssues.map((issue) =>
       issue.issue === currentIssue.issue
-        ? { ...issue, status: input as RepairStatus }
+        ? {
+            ...issue,
+            status: input as
+              | "not started"
+              | "in progress"
+              | "on hold"
+              | "completed"
+              | "pending parts",
+          }
         : issue
     );
 
@@ -296,10 +337,13 @@ export default function CarIssueAssistant() {
   const selectNextIssue = () => {
     setMessages((prev) => [
       ...prev,
+      { text: input, sender: "user" },
       {
         text: `Which issue would you like to work on next?`,
         sender: "bot",
-        options: repairInfo.repairIssues.map((issue) => issue.issue),
+        options: repairInfo.repairIssues
+          .filter((issue) => issue.status !== "completed")
+          .map((issue) => issue.issue),
       },
     ]);
     setCurrentStep("selectIssue");
@@ -347,39 +391,6 @@ export default function CarIssueAssistant() {
       ]);
     }
     setInput("");
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const moveToNextIssueOrFinish = () => {
-    if (currentIssueIndex < repairInfo.repairIssues.length - 1) {
-      setCurrentIssueIndex((prev) => prev + 1);
-      const nextIssue = repairInfo.repairIssues[currentIssueIndex + 1];
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: `Moving to the next issue. What's the status of "${nextIssue.issue}"?`,
-          sender: "bot",
-          options: [
-            "not started",
-            "in progress",
-            "on hold",
-            "completed",
-            "pending parts",
-          ],
-        },
-      ]);
-      setCurrentStep("repairStatus");
-    } else {
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: `All reported issues have been updated. Are there any new issues discovered during the repair? (Yes/No)`,
-          sender: "bot",
-          options: ["Yes", "No"],
-        },
-      ]);
-      setCurrentStep("newIssues");
-    }
   };
 
   const handleNewIssuesSubmit = () => {
@@ -477,8 +488,10 @@ export default function CarIssueAssistant() {
       const currentPriorities = input ? input.split(",") : [];
       const newPriorities = [...currentPriorities];
       const index = selectedIssues.indexOf(option);
-      newPriorities[index] =
-        (currentPriorities[index] % selectedIssues.length) + 1;
+      newPriorities[index] = (
+        (Number(currentPriorities[index]) % selectedIssues.length) +
+        1
+      ).toString();
       setInput(newPriorities.join(","));
     } else if (
       ["repairStatus", "newIssues", "selectIssue", "continueRepair"].includes(
@@ -486,7 +499,7 @@ export default function CarIssueAssistant() {
       )
     ) {
       setInput(option);
-      handleSubmit(new Event("submit") as React.FormEvent);
+      handleSubmit(new Event("submit") as unknown as React.FormEvent);
     }
   };
 
@@ -502,7 +515,7 @@ export default function CarIssueAssistant() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-[#001d3d] rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
       <div id="chat-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
@@ -514,8 +527,8 @@ export default function CarIssueAssistant() {
             <div
               className={`max-w-xs p-3 rounded-lg ${
                 message.sender === "user"
-                  ? "bg-[#023e7d] text-white"
-                  : "bg-[#002855] text-white"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100"
               }`}
             >
               <p className="whitespace-pre-line">{message.text}</p>
@@ -525,10 +538,10 @@ export default function CarIssueAssistant() {
                     <button
                       key={optionIndex}
                       onClick={() => handleOptionClick(option)}
-                      className={`block w-full text-left p-2 rounded text-white border transition-colors ${
+                      className={`block w-full text-left p-2 rounded text-gray-800 border transition-colors ${
                         message.isMultiSelect && selectedIssues.includes(option)
-                          ? "bg-[#023e7d] border-[#003566]"
-                          : "bg-[#002855] hover:bg-[#003566] border-[#003566]"
+                          ? "bg-blue-100 border-blue-500"
+                          : "bg-white hover:bg-gray-50 border-gray-200"
                       }`}
                     >
                       <div className="flex items-center">
@@ -536,8 +549,8 @@ export default function CarIssueAssistant() {
                           <div
                             className={`w-4 h-4 border rounded mr-2 flex items-center justify-center ${
                               selectedIssues.includes(option)
-                                ? "bg-[#023e7d] border-[#003566]"
-                                : "border-[#003566]"
+                                ? "bg-blue-500 border-blue-500"
+                                : "border-gray-300"
                             }`}
                           >
                             {selectedIssues.includes(option) && (
@@ -555,7 +568,7 @@ export default function CarIssueAssistant() {
                             )}
                           </div>
                         ) : (
-                          <div className="w-4 h-4 border rounded mr-2 flex items-center justify-center border-[#003566]">
+                          <div className="w-4 h-4 border rounded mr-2 flex items-center justify-center">
                             {input.split(",")[optionIndex]}
                           </div>
                         )}
@@ -569,13 +582,13 @@ export default function CarIssueAssistant() {
           </div>
         ))}
       </div>
-      <form onSubmit={handleSubmit} className="p-4 border-t border-[#003566]">
-        <div className="flex rounded-lg border border-[#003566] overflow-hidden">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
           <input
             type={messages[messages.length - 1].inputType || "text"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1  px-4 py-2 focus:outline-none bg-[#002855] text-white placeholder-white]"
+            className="flex-1 px-4 py-2 focus:outline-none"
             placeholder={
               messages[messages.length - 1].inputPlaceholder ||
               "Enter information..."
@@ -583,10 +596,10 @@ export default function CarIssueAssistant() {
           />
           <button
             type="submit"
-            className={`px-6 py-2 text-white focus:outline-none text-white ${
+            className={`px-6 py-2 text-white focus:outline-none ${
               !input.trim() && selectedIssues.length === 0
-                ? "bg-black  cursor-not-allowed"
-                : "bg-[#023e7d] hover:bg-[#003566]"
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600"
             }`}
             disabled={!input.trim() && selectedIssues.length === 0}
           >
@@ -594,16 +607,16 @@ export default function CarIssueAssistant() {
           </button>
         </div>
         {currentStep === "issues" && selectedIssues.length > 0 && (
-          <div className="mt-2 text-sm text-[#003566]">
+          <div className="mt-2 text-sm text-gray-600">
             Selected issues: {selectedIssues.join(", ")}
           </div>
         )}
       </form>
       {repairInfo.customerMobile && (
-        <div className="p-4 border-t border-[#003566]">
+        <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleCallCustomer}
-            className="w-full px-4 py-2 bg-[#023e7d] text-white rounded hover:bg-[#003566] focus:outline-none"
+            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 focus:outline-none"
           >
             Call Customer: {repairInfo.customerMobile}
           </button>
