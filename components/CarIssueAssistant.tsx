@@ -515,7 +515,7 @@ export default function CarIssueAssistant() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[600px] xl:w-full w-screen xl:max-w-md  mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
       <div id="chat-container" className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
