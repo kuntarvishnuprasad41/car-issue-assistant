@@ -7,8 +7,7 @@ export default function Home() {
       <div className="z-10 w-full  items-center text-center justify-between font-mono text-sm bg-black">
         
         <CarIssueAssistant />
-        <br />
-        {carData.cars.join(", ")}
+       
       </div>
     </main>
   );
