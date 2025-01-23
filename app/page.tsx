@@ -1,5 +1,5 @@
 import CarIssueAssistant from "../components/CarIssueAssistant";
-import carData from "../app/data/carData.json";
+
 
 export default function Home() {
   return (
